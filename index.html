@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบสั่งอาหารออนไลน์</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .page { border: 1px solid #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .menu-image { max-width: 100%; height: auto; border-radius: 6px; margin-top: 15px; }
+        input[type="text"], input[type="email"], input[type="tel"], textarea { width: 100%; padding: 10px; margin: 5px 0 15px 0; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #4CAF50; color: white; padding: 14px 20px; margin: 8px 0; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
+        button:hover { opacity: 0.9; }
+        #loading-message { color: #007bff; }
+        #response-message { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="home-page" class="page">
+        <h1>ร้านอาหารอร่อย 🍜</h1>
+        <p>ยินดีต้อนรับสู่ระบบสั่งอาหารออนไลน์ กรุณากดปุ่มเพื่อดูเมนูและเริ่มการสั่งซื้อ</p>
+        
+        <button onclick="showPage('order-page')">สั่งอาหารเลย!</button>
+        
+        <hr>
+        <h2>เมนูอาหารวันนี้</h2>
+        <img src="https://via.placeholder.com/600x400?text=Food+Menu+Image" alt="รูปเมนูอาหาร" class="menu-image">
+        <p style="text-align: center; font-size: 0.8em; color: #555;">
+
+[Image of Food Menu]
+</p>
+    </div>
+
+    <div id="order-page" class="page" style="display:none;">
+        <h1>กรอกข้อมูลการสั่งอาหาร</h1>
+        
+        <form name="submit-to-google-sheet" id="order-form">
+            
+            <label for="CustomerName">ชื่อคนสั่ง:</label>
+            <input type="text" id="CustomerName" name="CustomerName" required>
+
+            <label for="ReplyEmail">Email ตอบกลับ:</label>
+            <input type="email" id="ReplyEmail" name="ReplyEmail" required>
+
+            <label for="PhoneNumber">เบอร์โทร:</label>
+            <input type="tel" id="PhoneNumber" name="PhoneNumber" required>
+
+            <label for="FoodOrder">เมนูอาหารที่สั่ง (ระบุชื่อและจำนวน):</label>
+            <textarea id="FoodOrder" name="FoodOrder" rows="5" placeholder="เช่น: ข้าวผัดกุ้ง 1, ก๋วยเตี๋ยวเนื้อ 2, น้ำเปล่า 3" required></textarea>
+
+            <button type="submit" id="submit-button">ยืนยันการสั่งซื้อ</button>
+            <p id="loading-message" style="display:none;">กำลังส่งข้อมูล...</p>
+            <p id="response-message"></p>
+        </form>
+    </div>
+
+    <div id="success-page" class="page" style="display:none; text-align: center;">
+        <h1>🎉 สั่งซื้อสำเร็จ!</h1>
+        <p>ขอบคุณสำหรับการสั่งซื้อ เราได้รับข้อมูลของคุณแล้ว และจะรีบดำเนินการจัดส่งให้เร็วที่สุด</p>
+        <button onclick="showPage('home-page')" style="width: 50%;">กลับหน้าแรก</button>
+    </div>
+
+    <script>
+        // *** 1. แทนที่ URL นี้ด้วย Web App URL ที่คุณได้จาก Google Apps Script ***
+        const scriptURL = 'https://script.google.com/macros/library/d/1o2Z4JF6lwKCp1WzqIBNOIf4auF2fd0Y-qEzQicKd0Hz8Jja9EEzANU1q/7';
+        // *************************************************************************
+
+        const form = document.forms['submit-to-google-sheet'];
+        const submitButton = document.getElementById('submit-button');
+        const loadingMessage = document.getElementById('loading-message');
+        const responseMessage = document.getElementById('response-message');
+        
+        // ฟังก์ชันสลับหน้า (View)
+        function showPage(pageId) {
+            document.getElementById('home-page').style.display = 'none';
+            document.getElementById('order-page').style.display = 'none';
+            document.getElementById('success-page').style.display = 'none';
+            document.getElementById(pageId).style.display = 'block';
+            responseMessage.textContent = ''; // ล้างข้อความตอบกลับเมื่อเปลี่ยนหน้า
+        }
+
+        // เริ่มต้นด้วยการแสดงหน้าแรก
+        showPage('home-page'); 
+
+        // จัดการการส่งฟอร์มด้วย JavaScript
+        form.addEventListener('submit', e => {
+            e.preventDefault(); // หยุดการส่งฟอร์มแบบดั้งเดิม
+
+            submitButton.disabled = true;
+            loadingMessage.style.display = 'block';
+            responseMessage.textContent = '';
+
+            let requestBody = new FormData(form);
+
+            fetch(scriptURL, { 
+                method: 'POST', 
+                body: requestBody
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('การส่งข้อมูลล้มเหลวด้วยสถานะ: ' + response.status);
+            })
+            .then(data => {
+                loadingMessage.style.display = 'none';
+                if (data.result === 'success') {
+                    form.reset(); // ล้างฟอร์ม
+                    showPage('success-page'); // ไปหน้าสำเร็จ
+                } else {
+                    responseMessage.textContent = '❌ ข้อผิดพลาด: ' + (data.error || 'ไม่สามารถบันทึกข้อมูลได้');
+                    responseMessage.style.color = 'red';
+                }
+            })
+            .catch(error => {
+                loadingMessage.style.display = 'none';
+                responseMessage.textContent = '❌ ข้อผิดพลาดในการเชื่อมต่อ: ' + error.message;
+                responseMessage.style.color = 'red';
+                console.error('Error!', error.message);
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+            });
+        });
+    </script>
+
+</body>
+</html>
